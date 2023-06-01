@@ -1,0 +1,108 @@
+---
+name: 5. Testing Hooks
+route: /testing/testing-hooks
+menu: 1 - Testing
+---
+
+# Testing Hooks
+
+Yay! We've come this far. Now the only thing that's left is testing the Hooks. How hard can it be, right? After all, it's just a function, so we just test it like a function, right? Well, I kind of lied to you, sorry. Actually, if you know your way around functional programming ([you should!, btw](https://mostly-adequate.gitbook.io/mostly-adequate-guide/)), you may have been screaming this whole time that PFCs are not strictly Pure Functions. The same applies to hooks. Yes, hooks are just plain functions, and some of them can even be pure functions. But they aren't Pure by nature. Far from it.
+
+So, to cut a long story short I'll just let the authors of `@testing-library/react-hooks` [speak for themselves](https://react-hooks-testing-library.com/), as I can't possibly explain it any better or more concisely.
+
+------
+### _The problem_
+
+_You're writing an awesome custom hook and you want to test it, but as soon as you call it you see the following error:_
+
+> _Invariant Violation: Hooks can only be called inside the body of a function component._
+
+_You don't really want to write a component solely for testing this hook and have to work out how you were going to trigger all the various ways the hook can be updated, especially given the complexities of how you've wired the whole thing together._
+
+### _The solution_
+
+_The `react-hooks-testing-library` allows you to create a simple test harness for React hooks that handles running them within the body of a function component, as well as providing various useful utility functions for updating the inputs and retrieving the outputs of your amazing custom hook. This library aims to provide a testing experience as close as possible to natively using your hook from within a real component._
+
+------
+
+So, looks like we're in the right place.
+
+### Install `@testing-library/react-hooks`
+
+_Yes! Go ahead and copy it from here. Nobody's looking..._
+
+`yarn add --dev @testing-library/react-hooks`
+
+## Writing tests for a Hook
+
+Let's take a moment to remember the `useCounterController` hook from the [previous example](/testing/separating-concerns-with-hooks)
+
+```typescript
+export const useCounterController = (
+  initialValue = 0,
+  increment = 1
+): CounterUIProps => {
+  const [currentValue, setCurrentValue] = useState(initialValue);
+  const increase = () =>
+    setCurrentValue((currentValue) => currentValue + increment);
+  const decrease = () =>
+    setCurrentValue((currentValue) => currentValue - increment);
+
+  return {
+    currentValue,
+    increase,
+    decrease,
+  };
+};
+```
+
+Notice below how easy it is to actually test the code that really matters
+
+```typescript
+import { renderHook, act } from "@testing-library/react-hooks";
+import { useCounterController } from "./useCounterController";
+
+describe(() => {
+  it("should increment and decrement values correctly", () => {
+    const { result } = renderHook(() => useCounterController(0));
+
+    // Call the "increase" function...
+    act(() => result.current.increase());
+
+    // ...and simply expect it to be `1`
+    expect(result.current.currentValue).toBe(1);
+
+    act(() => result.current.decrease());
+
+    expect(result.current.currentValue).toBe(0);
+  });
+
+  it("should work from a custom initial value", () => {
+    const { result } = renderHook(() => useCounterController(9000));
+
+    act(() => result.current.increase());
+
+    expect(result.current.currentValue).toBe(9001);
+
+    act(() => result.current.decrease());
+
+    expect(result.current.currentValue).toBe(9000);
+  });
+
+  it("should work from a custom increment value", () => {
+    const { result } = renderHook(() => useCounterController(3000, 2));
+
+    act(() => result.current.increase());
+
+    expect(result.current.currentValue).toBe(3002);
+
+    act(() => result.current.decrease());
+
+    expect(result.current.currentValue).toBe(3002);
+  });
+});
+```
+
+Simple, concise, composable and even better: It ensures we can **ALWAYS** reach 100% code coverage for interaction code, without going through the hassle of testing the component itself.
+
+> (Please notice this is a Work in Progress. Found anything amiss? Your PR is always welcome)

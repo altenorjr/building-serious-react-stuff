@@ -1,0 +1,89 @@
+---
+name: 2. PFCs for UI Sanity
+route: /testing/pfcs-for-ui-sanity
+menu: 1 - Testing
+---
+
+import { Playground, Props } from "docz";
+import { TrafficLights } from "./TrafficLights";
+
+# Pure Function Components for UI Sanity
+
+The greatest strength of React is the ability of using Pure Functional Components.
+
+To understand PFCs, let's first understand Pure Functions. A pure function is a function that, given the same parameters, always returns the same result. The results don't depend on anything but its parameters and it does not only interact with the outside world in any other way different .
+
+```typescript
+const timesTwo = (value: number) => value * 2;
+timesTwo(2); // 4
+```
+
+It doesn't matter how many times you call `timesTwo`. As long as the input is `2`, the output will always be `4`.
+
+In React, Pure Functional Components (from now on just "PFCs") are components that simply take the props passed down to them and render the UI state based on them. That's precisely what React is all about.
+
+Below we have a test Component, `TrafficLights`, with a very simple set of props and the expected behavior of any traffic light
+
+### TrafficLights - Component Props
+
+<Props of={TrafficLights} />
+
+### Usage
+
+Try changing the `current` prop below from "red" to "yellow" or "green"
+
+<Playground>
+  <TrafficLights current="red" />
+</Playground>
+
+Now check the simplified implementation:
+
+```typescript
+export const TrafficLights = ({ current }: TrafficLightsProps) => (
+  <div>
+    <TrafficLamp color="red" current={current} />
+    <TrafficLamp color="yellow" current={current} />
+    <TrafficLamp color="green" current={current} />
+  </div>
+);
+
+export const TrafficLamp = ({ color, current }: TrafficLampProps) => (
+  <div
+    style={{
+      backgroundColor: color,
+      opacity: current === color ? 1 : 0.2,
+      width: "30px",
+      height: "30px",
+      borderRadius: "15px",
+      marginBottom: "2px",
+    }}
+  />
+);
+```
+
+`TrafficLights` and `TrafficLamp` are both PFCs. The most noticeable thing about them is that they do not own their own state nor they use any kind of hook. They can use all the conditional rendering they want, but they don't get to use anything but the props passed down to them.
+
+> NOTE:
+> Do not confuse PFCs with React's Memoized components (a.k.a. PureComponents). Those concepts are somewhat similar, but aren't the same thing (nor are they strictly necessary)
+
+The benefit here is that when a component is a PFC, every sigle discrete combination of props leads to a discrete rendered UI state in the output. As no interactions happen inside this component, there's no interaction to test inside of it.
+
+> **_OMG!!! Are you saying components don't need Unit Tests? That's HERESY!!!_**
+
+For the most part, yes, that's precisely what I'm stating. And I go further:
+
+## UI Testing is for Humans, not machines
+
+Join me for a quick thought experiment. Let's take the component above, the `TrafficLights` component. Let's say we write tests for it and everything passes. Now imagine that when we reach QA, they ask us to swap the yellow color for orange as it's more clearly visible. If we're gonna be purists, now we're going to have to write tests checking if the color shown when we pass `yellow` is the right shade of orange, as asked by the product team. Going further, why not write tests to check if the lights are actually circles? Whatever we do, there's always the possibility of having a complete set of painfully written tests that do pass, but still won't reflect correctness nor give you Peace of Mind.
+
+> ### AIM FOR CONFIDENCE.
+>
+> _"Test the things that will help you feel confident about your code. It’s easy to fall into the trap of testing everything that is testable, but that’s a rabbit hole you want to avoid. Instead, focus on testing the behaviors on which other parts of your code will rely."_ (taken from these [Principles of Test driven Develpment](https://chromatichq.com/blog/principles-testdriven-development))
+
+Writing automated tests for checking if a UI totally works is hard. Not only hard, but mostly pointless, as it's just dupplicated work that a human will have to do aftwerwards anyway. And now we introduce a second layer of possible coding mistakes and an additional opportunity for requirement miscomunication. Then Why bothering?
+
+> _**"HELL YEAH!!! ANARCHY!!! TESTS ARE A POINTLESS WASTE OF TIME!**"_
+
+Hold your horses there, **THAT'S NOT** what I'm saying. We're not forfeiting testing the UI, we're just leaving testing UI for correctness to who will must do it anyway. When you do it, you unlock one of the greatest advantages of modern React:
+
+**[Parallel UI QA with Storybook](/testing/parallel-ui-qa-with-storybook)**

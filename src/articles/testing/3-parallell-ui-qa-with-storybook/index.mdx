@@ -1,0 +1,88 @@
+---
+name: 3. Leveraging Storybook for UI QA
+route: /testing/parallel-ui-qa-with-storybook
+menu: 1 - Testing
+---
+
+import storybookDemo from "./storybook-demo.gif";
+
+# PFCs + Storybook = Path to bliss
+
+By resorting to primarily writing [PFCs](/testing/pfcs-for-ui-sanity), we can greatly leverage tools like Storybook. We can even write entire pages that can live standalone and disconnected from the rest of the App.
+
+## A great development strategy
+
+As UI developers some good 80%+ of our time is supposed to be spent on things that can be developed completely disconnected from the rest of the app. As a quick rule of thumb, if you're having to wait for API response times for anything else than final integration tests, you're probably doing it wrong. And I dare to say it's wrong because if we need to have the entire app running so we can test a single component, then we're forfeiting for the best part all of the advantages brought by componentization itself. If not to take full advange of componentization, then we'd probably be better off with Backbone or jQuery, right?
+
+No need for waiting for some data to load from the server. No need to even have a working internet connection. You just need to write stories as you would write test cases. Declare every single possible combination of props to have static equivalents for every single possible rendered state.
+
+It's not an automated process, but bear in mind that UI testing can't be automated with Unit Tests anyway. Then you'll have precisely every single state of your component available to you without the need to be manually triggering the desired state updates.
+
+Check the example `MediaUpload` component below.
+
+<img src={storybookDemo} />
+
+For the blissfull Developer Experiece you see above, all we had to do was declare stories like the following:
+
+```typescript
+/// MediaUpload.stories.tsx
+import React, { useState } from "react";
+import { Story } from "@storybook/react/types-6-0";
+
+import { MediaUpload, MediaUploadProps } from "./MediaUpload";
+
+import { UploadType } from "components/Uploader";
+
+const Template: Story<MediaUploadProps> = (args) => <MediaUpload {...args} />;
+
+export default {
+  title: "components/MediaUpload",
+  component: MediaUpload,
+};
+
+export const Default = Template.bind({});
+
+Default.args = {
+  firstLine: "Image Size",
+  secondLine: "300x300 px",
+  thirdLine: "Max. file size 2MB",
+  uploadType: UploadType.Image,
+};
+
+export const Uploading = Template.bind({});
+
+Uploading.args = {
+  ...Default.args,
+  uploading: true,
+};
+
+export const ForVideo = Template.bind({});
+
+ForVideo.args = {
+  firstLine: "Video resolution",
+  secondLine: "Min. 720p",
+  thirdLine: "Max. file size 128GB",
+  uploadType: UploadType.Video,
+};
+
+export const WithErrors = Template.bind({});
+
+WithErrors.args = {
+  ...Default.args,
+  error: "The video format is not supported",
+};
+```
+
+That's pretty declarative, easy to write and easy to read. Leveraging Typescript also ensures there's basically not much to actually type, as Intellisense gets pretty smart when using TS.
+
+## Parallel UI QA
+
+There's another huge bonus of keeping components Pure: Once done developing the UI components, we can setup a Storybook export to enable the QA team to check for styling mismatches and odd behaviour long before the entire application is ready and complete.
+
+If we are careful enough to ensure that say, a page component, can be represented as a collection of PFCs, then it's look _and_ behavior can be completely tested and validated independently of the rest of the application. No need to setup a backend, **no need to ensure everything works before the QA team can come in and start looking for problems**. And whenever something is off, the feedback cycle is greatly shortened with more clarity about what specific use cases are failing and what's wrong with them.
+
+It's always going to have to be a human to decide whether or not some screen is pretty enough for a human being. This work isn't deferrable to a machine, then we shouldn't have to write Unit Tests for checking if a color matches the requirements.
+
+## Moving forward
+
+Of course every app needs interaction, and that interaction is what we need to be testing. That's why we need to decouple the functionality we want to test independently of the actual rendering rules. [We do so by separating the concerns](/testing/separating-concerns-with-hooks)

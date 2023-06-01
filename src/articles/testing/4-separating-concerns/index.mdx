@@ -1,0 +1,123 @@
+---
+name: 4. Separating Concerns with Hooks
+route: /testing/separating-concerns-with-hooks
+menu: 1 - Testing
+---
+
+import { useState } from "react";
+import { Playground } from "docz";
+
+import { CounterUI } from "./CounterUI";
+import { useCounterController } from "./useCounterController";
+
+# Separating Concerns: Hooks to the Rescue
+
+First of all, let's take a second and revisit the `Counter` component in our very first example
+
+<Playground>
+  {() => {
+    const [counter, setCounter] = useState(0);
+    const increase = () => setCounter((counter) => counter + 1);
+    const decrease = () => setCounter((counter) => counter - 1);
+    return (
+      <div>
+        <button onClick={decrease}>-</button>
+        <span>{counter}</span>
+        <button onClick={increase}>+</button>
+      </div>
+    );
+  }}
+</Playground>
+
+## Extracting the PFC
+
+To make it properly testable, let's first extract all of the JSX into it's own PFC:
+
+```typescript
+// CounterUI.tsx => (.TSX) This is important
+import React from "react";
+
+export type CounterUIProps = {
+  currentValue: number;
+  increase: () => void;
+  decrease: () => void;
+};
+
+export const CounterUI = ({
+  currentValue,
+  decrease,
+  increase,
+}: CounterUIProps) => (
+  <div>
+    <button onClick={decrease}>-</button>
+    <span>{currentValue}</span>
+    <button onClick={increase}>+</button>
+  </div>
+);
+```
+
+Notice how everything the UI needs is functions to `decrease` or `increase` the counter's `currentValue`. It doesn't really matter to the UI if when someone clicks the increment button it gets incremented by one or by a thousand. Or if it's updated at all. It simply cares about rendering based in the props passed down, nothing else. That's React enabling the Single Responsability Principle (aka Separation of Concerns) at it's prime. UI handles display, and that's it. **Notice how this component has no room for errors apart from the ones that can be caught early at development or later at QA.** There's absolutely nothing to Unit Test here
+
+## Extract the Controller Hook
+
+If by some reason you happen to think that having to write the `CounterUIProps` type alias is cumbersome, notice how neatly it becomes a perfect contract between the component and it's controlling hook:
+
+```typescript
+// Counter/useCounterController.ts => (.TS) This is important!
+import { CounterUIProps } from "./CounterUI";
+
+export const useCounterController = (
+  initialValue = 0,
+  increment = 1
+): CounterUIProps => {
+  const [currentValue, setCurrentValue] = useState(initialValue);
+
+  const increase = useCallback(
+    () => setCurrentValue((currentValue) => currentValue + increment),
+    [setCurrentValue]
+  );
+
+  const decrease = useCallback(
+    () => setCurrentValue((currentValue) => currentValue - increment),
+    [setCurrentValue]
+  );
+
+  return {
+    currentValue,
+    increase,
+    decrease,
+  };
+};
+```
+
+> **Please Note**: The proposed `use<ComponentName>Controller` convention is just that, a proposal. The "Controller" part of it **IS NOT** a silly attempt of reviving the old school MVC pattern. This is a Controller in the sense it's what "controls" the behavior of the UI. Of course we can replace `Controller` for whatever makes more sense for the team, but I've seen it used in the wild before.
+
+## Blundling it up
+
+Now the `Counter` component can be written like this:
+
+```typescript
+// Counter/index.tsx
+import React from "react";
+
+import { useCounterController } from "./useCounterController";
+import { CounterUI } from "./CounterUI";
+
+const Counter = () => <CounterUI {...useCounterController()} />;
+
+export default Counter;
+```
+
+Yes, it does work. Check this baby out!
+
+<Playground>{() => <CounterUI {...useCounterController()} />}</Playground>
+
+Hopefully we already agree that the UI should be tested by a person through Storybook, right? Now, do you see how easy it is now to actually test the code that matters for the counter? By doing so, we've just enabled [direct testing of the functionality](/testing/testing-hooks) we want tested
+
+## Reasons for splitting code
+
+If you've been paying close attention, you'll notice that I've explicitly told you to watch out for the fact that we are splitting the _CounterUI**.tsx**_ and _useCounterController**.ts**_ files each into their own separate files. Now notice how that the extensions are different.
+
+The reason for that is to make dead simple to exclude JSX-only code from the unit testing pipeline. A simple removal of the `*.tsx` extension from the jest matching pattern will be enough to ensure the coverage reports only refers to what actually matters.
+
+> I'm pretty sure there must be a better way to exclude PFCs from coverage reports. If you know how to do it, your PR is always welcome
